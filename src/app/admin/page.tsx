@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -13,7 +14,6 @@ import { store } from '@/lib/store';
 import { generateSummaryReport } from '@/ai/flows/generate-summary-report';
 import { 
   Users, 
-  Library, 
   Search, 
   UserX, 
   CheckCircle2, 
@@ -21,11 +21,11 @@ import {
   PieChart, 
   FileText,
   TrendingUp,
-  MoreVertical,
   LogOut,
   Sparkles
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -37,6 +37,7 @@ export default function AdminDashboard() {
   const [generatingReport, setGeneratingReport] = useState(false);
   const [report, setReport] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('stats');
+  const logo = PlaceHolderImages.find(img => img.id === 'neu-logo');
 
   useEffect(() => {
     if (!user || user.role !== 'Admin') {
@@ -111,8 +112,19 @@ export default function AdminDashboard() {
     <div className="min-h-screen bg-background flex flex-col">
       <header className="bg-primary text-primary-foreground p-4 shadow-md sticky top-0 z-10">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <Library className="h-8 w-8 text-accent" />
+          <div className="flex items-center gap-3">
+            <div className="bg-white p-0.5 rounded-full overflow-hidden flex items-center justify-center border border-accent">
+              {logo && (
+                <Image 
+                  src={logo.imageUrl} 
+                  alt={logo.description} 
+                  width={32} 
+                  height={32} 
+                  data-ai-hint={logo.imageHint}
+                  className="object-contain"
+                />
+              )}
+            </div>
             <h1 className="text-2xl font-bold font-headline">LibTrack Admin</h1>
           </div>
           <div className="flex items-center gap-4">

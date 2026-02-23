@@ -2,14 +2,16 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Library, Chrome } from 'lucide-react';
+import { Chrome } from 'lucide-react';
 import { store } from '@/lib/store';
 import { MOCK_USERS } from '@/lib/mock-data';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 function LoginForm() {
   const router = useRouter();
@@ -17,6 +19,7 @@ function LoginForm() {
   const { toast } = useToast();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
+  const logo = PlaceHolderImages.find(img => img.id === 'neu-logo');
   
   const roleHint = searchParams.get('role');
 
@@ -87,8 +90,17 @@ function LoginForm() {
     <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-background">
       <Card className="w-full max-w-md animate-in zoom-in-95 duration-300 shadow-2xl">
         <CardHeader className="text-center space-y-4">
-          <div className="mx-auto bg-primary text-primary-foreground p-3 rounded-full w-fit">
-            <Library className="h-8 w-8" />
+          <div className="mx-auto bg-white border-2 border-primary p-1 rounded-full w-fit overflow-hidden">
+            {logo && (
+              <Image 
+                src={logo.imageUrl} 
+                alt={logo.description} 
+                width={60} 
+                height={60} 
+                data-ai-hint={logo.imageHint}
+                className="object-contain"
+              />
+            )}
           </div>
           <div>
             <CardTitle className="text-3xl font-headline font-bold">Institutional Login</CardTitle>

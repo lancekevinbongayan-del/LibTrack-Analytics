@@ -1,15 +1,28 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
-import { LogIn, Library, ShieldCheck, GraduationCap } from 'lucide-react';
+import { LogIn, ShieldCheck, GraduationCap } from 'lucide-react';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 export default function Home() {
+  const logo = PlaceHolderImages.find(img => img.id === 'neu-logo');
+
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
       <div className="max-w-4xl w-full space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
         <div className="text-center space-y-4">
-          <div className="inline-flex items-center justify-center p-4 bg-primary rounded-2xl shadow-xl mb-4">
-            <Library className="h-12 w-12 text-primary-foreground" />
+          <div className="inline-flex items-center justify-center p-2 bg-white rounded-full shadow-xl mb-4 border-4 border-primary overflow-hidden">
+            {logo && (
+              <Image 
+                src={logo.imageUrl} 
+                alt={logo.description} 
+                width={80} 
+                height={80} 
+                data-ai-hint={logo.imageHint}
+                className="object-contain"
+              />
+            )}
           </div>
           <h1 className="text-5xl font-bold tracking-tight text-primary font-headline">LibTrack Analytics</h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">

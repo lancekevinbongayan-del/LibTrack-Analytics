@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -12,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { store } from '@/lib/store';
 import { DEPARTMENTS, VISIT_REASONS_LIBRARY, VISIT_REASONS_DEAN } from '@/lib/mock-data';
 import { Library, GraduationCap, Clock, CheckCircle2, LogOut } from 'lucide-react';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 export default function VisitorPage() {
   const router = useRouter();
@@ -22,6 +24,7 @@ export default function VisitorPage() {
   const [idNumber, setIdNumber] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [checkedIn, setCheckedIn] = useState(false);
+  const logo = PlaceHolderImages.find(img => img.id === 'neu-logo');
 
   useEffect(() => {
     if (!user || user.role !== 'Visitor') {
@@ -92,8 +95,19 @@ export default function VisitorPage() {
     <div className="min-h-screen bg-background">
       <header className="bg-primary text-primary-foreground p-4 shadow-lg">
         <div className="max-w-6xl mx-auto flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <Library className="h-6 w-6" />
+          <div className="flex items-center gap-3">
+            <div className="bg-white p-0.5 rounded-full overflow-hidden flex items-center justify-center">
+              {logo && (
+                <Image 
+                  src={logo.imageUrl} 
+                  alt={logo.description} 
+                  width={32} 
+                  height={32} 
+                  data-ai-hint={logo.imageHint}
+                  className="object-contain"
+                />
+              )}
+            </div>
             <h1 className="text-xl font-bold font-headline">LibTrack Visitor Portal</h1>
           </div>
           <div className="flex items-center gap-4">
