@@ -24,7 +24,7 @@ export default function Home() {
               />
             )}
           </div>
-          <h1 className="text-5xl font-bold tracking-tight text-primary font-headline">LibTrack Analytics</h1>
+          <h1 className="text-5xl font-bold tracking-tight text-primary font-headline">Book Haven Analytics</h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
             Comprehensive visitor management and analytics for NEU Library and Academic Offices.
           </p>

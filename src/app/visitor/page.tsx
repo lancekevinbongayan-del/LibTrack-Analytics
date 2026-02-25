@@ -108,7 +108,7 @@ export default function VisitorPage() {
                 />
               )}
             </div>
-            <h1 className="text-xl font-bold font-headline">LibTrack Visitor Portal</h1>
+            <h1 className="text-xl font-bold font-headline">Book Haven Visitor Portal</h1>
           </div>
           <div className="flex items-center gap-4">
             <span className="hidden sm:inline">Welcome, <strong>{user?.name}</strong></span>
