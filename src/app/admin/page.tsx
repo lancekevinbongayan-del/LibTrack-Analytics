@@ -12,23 +12,20 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth, useFirestore, useUser, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, doc, updateDoc, deleteDoc, query, orderBy, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, updateDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
 import { generateSummaryReport } from '@/ai/flows/generate-summary-report';
 import { 
-  Users, 
   Search, 
-  UserX, 
-  CheckCircle2, 
   Clock, 
   PieChart, 
-  FileText,
   TrendingUp,
   LogOut,
   Sparkles,
   Loader2,
   Smartphone,
   Monitor,
-  Activity
+  Activity,
+  User
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
@@ -55,16 +52,16 @@ export default function AdminDashboard() {
   const usersQuery = useMemoFirebase(() => {
     return collection(db, 'users');
   }, [db]);
-  const { data: usersData, isLoading: usersLoading } = useCollection(usersQuery);
+  const { data: usersData } = useCollection(usersQuery);
 
   const sessionsQuery = useMemoFirebase(() => {
     return collection(db, 'user_sessions');
   }, [db]);
-  const { data: sessionsData, isLoading: sessionsLoading } = useCollection(sessionsQuery);
+  const { data: sessionsData } = useCollection(sessionsQuery);
 
   useEffect(() => {
     if (!isUserLoading && !user) {
-      router.push('/login?role=admin');
+      router.push('/login');
     }
   }, [user, isUserLoading, router]);
 
@@ -99,14 +96,14 @@ export default function AdminDashboard() {
         updatedAt: new Date().toISOString()
       });
       toast({
-        title: "User Management Updated",
-        description: `User has been ${!currentBlocked ? 'blocked' : 'unblocked'}.`,
+        title: "Security Updated",
+        description: `User access has been ${!currentBlocked ? 'restricted' : 'restored'}.`,
       });
     } catch (err) {
       toast({
         variant: "destructive",
-        title: "Action Failed",
-        description: "Permissions restricted. Are you an authorized admin?",
+        title: "Unauthorized Action",
+        description: "You do not have permission to modify user access.",
       });
     }
   };
@@ -118,14 +115,14 @@ export default function AdminDashboard() {
         checkOutTime: status === 'completed' ? new Date().toISOString() : null
       });
       toast({
-        title: "Status Updated",
-        description: `Visitor status changed to ${status}`,
+        title: "Visit Updated",
+        description: `Status changed to ${status}`,
       });
     } catch (err) {
       toast({
         variant: "destructive",
         title: "Update Failed",
-        description: "Could not update visit status.",
+        description: "Could not modify visit record.",
       });
     }
   };
@@ -141,8 +138,8 @@ export default function AdminDashboard() {
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "Report Failed",
-        description: "Could not generate AI report. Please try again.",
+        title: "AI Analysis Failed",
+        description: "Could not analyze trends at this time.",
       });
     } finally {
       setGeneratingReport(false);
@@ -170,24 +167,15 @@ export default function AdminDashboard() {
       <header className="bg-primary text-primary-foreground p-4 shadow-md sticky top-0 z-10">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-3">
-            <div className="bg-white p-0.5 rounded-full overflow-hidden flex items-center justify-center border border-accent">
-              {logo && (
-                <Image 
-                  src={logo.imageUrl} 
-                  alt={logo.description} 
-                  width={32} 
-                  height={32} 
-                  data-ai-hint={logo.imageHint}
-                  className="object-contain"
-                />
-              )}
+            <div className="bg-white p-0.5 rounded-full overflow-hidden flex items-center justify-center">
+              {logo && <Image src={logo.imageUrl} alt="Logo" width={32} height={32} />}
             </div>
             <h1 className="text-2xl font-bold font-headline">LibTrack Admin</h1>
           </div>
           <div className="flex items-center gap-4">
             <div className="text-right hidden sm:block">
               <p className="text-sm font-medium">{user?.email}</p>
-              <p className="text-xs opacity-70">Administrator</p>
+              <Badge variant="secondary" className="bg-accent/20 text-accent-foreground border-accent/20">Admin</Badge>
             </div>
             <Button variant="secondary" size="sm" onClick={handleLogout} className="gap-2">
               <LogOut className="h-4 w-4" /> Sign Out
@@ -198,79 +186,75 @@ export default function AdminDashboard() {
 
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 py-8 space-y-8">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="bg-white border-l-4 border-l-primary shadow-sm hover:shadow-md transition-shadow">
+          <Card className="bg-white border-l-4 border-l-primary shadow-sm">
             <CardContent className="pt-6">
               <div className="flex justify-between items-center">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Total Visitors</p>
                   <h3 className="text-3xl font-bold">{stats.total}</h3>
                 </div>
-                <div className="p-2 bg-primary/10 rounded-lg">
-                  <TrendingUp className="h-6 w-6 text-primary" />
-                </div>
+                <div className="p-2 bg-primary/10 rounded-lg"><TrendingUp className="h-6 w-6 text-primary" /></div>
               </div>
             </CardContent>
           </Card>
-          <Card className="bg-white border-l-4 border-l-green-500 shadow-sm hover:shadow-md transition-shadow">
+          <Card className="bg-white border-l-4 border-l-green-500 shadow-sm">
             <CardContent className="pt-6">
               <div className="flex justify-between items-center">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Active Sessions</p>
+                  <p className="text-sm font-medium text-muted-foreground">Active Staff</p>
                   <h3 className="text-3xl font-bold">{stats.active}</h3>
                 </div>
-                <div className="p-2 bg-green-500/10 rounded-lg">
-                  <Activity className="h-6 w-6 text-green-500" />
-                </div>
+                <div className="p-2 bg-green-500/10 rounded-lg"><Activity className="h-6 w-6 text-green-500" /></div>
               </div>
             </CardContent>
           </Card>
-          <Card className="bg-white border-l-4 border-l-accent shadow-sm hover:shadow-md transition-shadow">
+          <Card className="bg-white border-l-4 border-l-accent shadow-sm">
             <CardContent className="pt-6">
               <div className="flex justify-between items-center">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Today's Visits</p>
                   <h3 className="text-3xl font-bold">{stats.day}</h3>
                 </div>
-                <div className="p-2 bg-accent/10 rounded-lg">
-                  <Clock className="h-6 w-6 text-accent" />
-                </div>
+                <div className="p-2 bg-accent/10 rounded-lg"><Clock className="h-6 w-6 text-accent" /></div>
               </div>
             </CardContent>
           </Card>
-          <Card className="bg-white border-l-4 border-l-purple-500 shadow-sm hover:shadow-md transition-shadow">
+          <Card className="bg-white border-l-4 border-l-purple-500 shadow-sm">
             <CardContent className="pt-6">
               <div className="flex justify-between items-center">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">This Week</p>
+                  <p className="text-sm font-medium text-muted-foreground">Weekly Volume</p>
                   <h3 className="text-3xl font-bold">{stats.week}</h3>
                 </div>
-                <div className="p-2 bg-purple-500/10 rounded-lg">
-                  <PieChart className="h-6 w-6 text-purple-500" />
-                </div>
+                <div className="p-2 bg-purple-500/10 rounded-lg"><PieChart className="h-6 w-6 text-purple-500" /></div>
               </div>
             </CardContent>
           </Card>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="bg-white border p-1 h-12 w-full sm:w-fit overflow-x-auto overflow-y-hidden">
-            <TabsTrigger value="stats" className="px-6 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Logs</TabsTrigger>
-            <TabsTrigger value="active-sessions" className="px-6 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Active Sessions</TabsTrigger>
+          <TabsList className="bg-white border p-1 h-12 w-full sm:w-fit overflow-x-auto">
+            <TabsTrigger value="stats" className="px-6 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">All Visits</TabsTrigger>
+            <TabsTrigger value="active-sessions" className="px-6 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Live Sessions</TabsTrigger>
             <TabsTrigger value="dean-view" className="px-6 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Dean's Desk</TabsTrigger>
-            <TabsTrigger value="users" className="px-6 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Users</TabsTrigger>
-            <TabsTrigger value="reports" className="px-6 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">AI Reports</TabsTrigger>
+            <TabsTrigger value="users" className="px-6 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Staff Directory</TabsTrigger>
+            <TabsTrigger value="reports" className="px-6 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">AI Analytics</TabsTrigger>
           </TabsList>
 
           <TabsContent value="stats" className="animate-in fade-in duration-300">
             <Card>
-              <CardHeader>
-                <CardTitle>Global Visitor Logs</CardTitle>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Global Visitor Logs</CardTitle>
+                  <CardDescription>Comprehensive record of all library and academic office visits.</CardDescription>
+                </div>
               </CardHeader>
               <CardContent>
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Time</TableHead>
+                      <TableHead>Visitor</TableHead>
                       <TableHead>Department</TableHead>
                       <TableHead>Reason</TableHead>
                       <TableHead>Status</TableHead>
@@ -281,6 +265,12 @@ export default function AdminDashboard() {
                       <TableRow key={visit.id}>
                         <TableCell className="text-xs">
                           {visit.checkInTime ? format(new Date(visit.checkInTime), 'MMM d, h:mm a') : 'N/A'}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col">
+                            <span className="font-medium text-sm">{visit.visitorName}</span>
+                            <span className="text-[10px] text-muted-foreground">{visit.visitorEmail}</span>
+                          </div>
                         </TableCell>
                         <TableCell className="text-xs">{visit.collegeDepartment}</TableCell>
                         <TableCell className="text-sm">{visit.reason}</TableCell>
@@ -300,14 +290,14 @@ export default function AdminDashboard() {
           <TabsContent value="active-sessions" className="animate-in fade-in duration-300">
             <Card>
               <CardHeader>
-                <CardTitle>Real-time Active Sessions</CardTitle>
-                <CardDescription>Live monitoring of users currently logged into the portal.</CardDescription>
+                <CardTitle>Real-time Admin Activity</CardTitle>
+                <CardDescription>Monitoring authorized staff currently managing the dashboard.</CardDescription>
               </CardHeader>
               <CardContent>
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>User</TableHead>
+                      <TableHead>Staff Member</TableHead>
                       <TableHead>Login Time</TableHead>
                       <TableHead>Device</TableHead>
                       <TableHead className="text-right">Action</TableHead>
@@ -331,16 +321,9 @@ export default function AdminDashboard() {
                             <span className="text-xs">{session.deviceType || 'Unknown'}</span>
                           </div>
                         </TableCell>
-                        <TableCell className="text-right">
-                          <Badge className="bg-green-500">Live</Badge>
-                        </TableCell>
+                        <TableCell className="text-right"><Badge className="bg-green-500">Active</Badge></TableCell>
                       </TableRow>
                     ))}
-                    {sessions.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">No active users.</TableCell>
-                      </TableRow>
-                    )}
                   </TableBody>
                 </Table>
               </CardContent>
@@ -351,12 +334,13 @@ export default function AdminDashboard() {
             <Card>
               <CardHeader>
                 <CardTitle>Dean's Waiting Room</CardTitle>
+                <CardDescription>Live queue for appointments with the Dean's Office.</CardDescription>
               </CardHeader>
               <CardContent>
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>ID Number</TableHead>
+                      <TableHead>Visitor</TableHead>
                       <TableHead>Purpose</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
@@ -365,19 +349,20 @@ export default function AdminDashboard() {
                   <TableBody>
                     {visits.filter(v => v.studentEmployeeId).map(visit => (
                       <TableRow key={visit.id}>
-                        <TableCell className="font-mono text-sm">{visit.studentEmployeeId}</TableCell>
-                        <TableCell>{visit.reason}</TableCell>
                         <TableCell>
-                          <Badge className="capitalize">
-                            {visit.status || 'waiting'}
-                          </Badge>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{visit.visitorName}</span>
+                            <span className="text-xs text-muted-foreground font-mono">{visit.studentEmployeeId}</span>
+                          </div>
                         </TableCell>
+                        <TableCell className="text-sm">{visit.reason}</TableCell>
+                        <TableCell><Badge className="capitalize">{visit.status || 'waiting'}</Badge></TableCell>
                         <TableCell className="text-right space-x-2">
                           {(visit.status === 'waiting' || !visit.status) && (
-                            <Button size="sm" onClick={() => handleUpdateVisitStatus(visit.id, 'in-meeting')}>Start</Button>
+                            <Button size="sm" onClick={() => handleUpdateVisitStatus(visit.id, 'in-meeting')}>Call In</Button>
                           )}
                           {visit.status === 'in-meeting' && (
-                            <Button size="sm" variant="outline" onClick={() => handleUpdateVisitStatus(visit.id, 'completed')}>End</Button>
+                            <Button size="sm" variant="outline" onClick={() => handleUpdateVisitStatus(visit.id, 'completed')}>End Meeting</Button>
                           )}
                         </TableCell>
                       </TableRow>
@@ -391,11 +376,11 @@ export default function AdminDashboard() {
           <TabsContent value="users" className="animate-in fade-in duration-300">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>User Directory</CardTitle>
+                <CardTitle>Staff Management</CardTitle>
                 <div className="relative w-64">
                   <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input 
-                    placeholder="Search..." 
+                    placeholder="Filter staff..." 
                     className="pl-8" 
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
@@ -406,7 +391,7 @@ export default function AdminDashboard() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>User</TableHead>
+                      <TableHead>Staff Member</TableHead>
                       <TableHead>Role</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
@@ -415,8 +400,13 @@ export default function AdminDashboard() {
                     {filteredUsers.map(u => (
                       <TableRow key={u.id}>
                         <TableCell>
-                          <div className="font-semibold">{u.fullName}</div>
-                          <div className="text-xs text-muted-foreground">{u.email}</div>
+                          <div className="flex items-center gap-3">
+                            <div className="bg-primary/10 p-1.5 rounded-full"><User className="h-4 w-4 text-primary" /></div>
+                            <div>
+                              <div className="font-semibold">{u.fullName}</div>
+                              <div className="text-xs text-muted-foreground">{u.email}</div>
+                            </div>
+                          </div>
                         </TableCell>
                         <TableCell><Badge variant="outline">{u.role}</Badge></TableCell>
                         <TableCell className="text-right">
@@ -425,7 +415,7 @@ export default function AdminDashboard() {
                             size="sm" 
                             onClick={() => handleBlockUser(u.id, !!u.blocked)}
                           >
-                            {u.blocked ? "Unblock" : "Block"}
+                            {u.blocked ? "Unblock" : "Restrict Access"}
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -438,19 +428,25 @@ export default function AdminDashboard() {
 
           <TabsContent value="reports" className="animate-in fade-in duration-300">
             <Card>
-              <CardHeader>
-                <Button onClick={handleGenerateReport} disabled={generatingReport} className="gap-2">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>AI Trend Analysis</CardTitle>
+                  <CardDescription>Generative summary of visitor volume and peak hours.</CardDescription>
+                </div>
+                <Button onClick={handleGenerateReport} disabled={generatingReport} className="gap-2 bg-primary">
                   {generatingReport ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                  Generate AI Summary
+                  Run Analysis
                 </Button>
               </CardHeader>
               <CardContent>
                 {report ? (
-                  <div className="p-6 bg-slate-50 rounded-xl border shadow-inner whitespace-pre-wrap">
+                  <div className="p-6 bg-slate-50 rounded-xl border shadow-inner whitespace-pre-wrap font-body text-sm leading-relaxed text-slate-700">
                     {report}
                   </div>
                 ) : (
-                  <div className="text-center py-12 text-muted-foreground">Click generate to analyze trends.</div>
+                  <div className="text-center py-12 border-2 border-dashed rounded-xl">
+                    <p className="text-muted-foreground">Click the analysis button to process the latest visitor logs.</p>
+                  </div>
                 )}
               </CardContent>
             </Card>

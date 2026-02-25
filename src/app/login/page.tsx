@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -10,7 +10,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Chrome, Loader2, Mail } from 'lucide-react';
+import { Loader2, ShieldCheck } from 'lucide-react';
 import { useAuth, useFirestore } from '@/firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
@@ -18,7 +18,6 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 function LoginForm() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { toast } = useToast();
   const auth = useAuth();
   const db = useFirestore();
@@ -28,7 +27,6 @@ function LoginForm() {
   const [loading, setLoading] = useState(false);
   
   const logo = PlaceHolderImages.find(img => img.id === 'neu-logo');
-  const roleHint = searchParams.get('role');
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,7 +36,7 @@ function LoginForm() {
       toast({
         variant: "destructive",
         title: "Access Denied",
-        description: "Only institutional emails (@neu.edu.ph) are allowed.",
+        description: "Only institutional emails (@neu.edu.ph) are allowed for Admin access.",
       });
       setLoading(false);
       return;
@@ -62,6 +60,16 @@ function LoginForm() {
           return;
         }
 
+        if (userData.role !== 'Admin') {
+          toast({
+            variant: "destructive",
+            title: "Permission Denied",
+            description: "This portal is strictly for administrative users.",
+          });
+          setLoading(false);
+          return;
+        }
+
         // Create a real-time session record
         const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
         setDoc(doc(db, 'user_sessions', user.uid), {
@@ -74,19 +82,23 @@ function LoginForm() {
         });
 
         toast({
-          title: "Welcome Back",
+          title: "Welcome Back, Admin",
           description: `Logged in as ${userData.fullName}`,
         });
         
-        router.push(userData.role === 'Admin' ? '/admin' : '/visitor');
+        router.push('/admin');
       } else {
-        router.push('/visitor');
+        toast({
+          variant: "destructive",
+          title: "Access Denied",
+          description: "No administrative profile found for this account.",
+        });
       }
     } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Authentication Failed",
-        description: "Invalid credentials or user does not exist.",
+        description: "Invalid credentials or unauthorized account.",
       });
     } finally {
       setLoading(false);
@@ -95,7 +107,7 @@ function LoginForm() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-background">
-      <Card className="w-full max-w-md animate-in zoom-in-95 duration-300 shadow-2xl">
+      <Card className="w-full max-w-md animate-in zoom-in-95 duration-300 shadow-2xl border-t-4 border-t-accent">
         <CardHeader className="text-center space-y-4">
           <div className="mx-auto bg-white border-2 border-primary p-1 rounded-full w-fit overflow-hidden shadow-sm">
             {logo && (
@@ -110,14 +122,14 @@ function LoginForm() {
             )}
           </div>
           <div>
-            <CardTitle className="text-3xl font-headline font-bold">Institutional Login</CardTitle>
-            <CardDescription>Sign in with your NEU institutional account</CardDescription>
+            <CardTitle className="text-3xl font-headline font-bold">Admin Login</CardTitle>
+            <CardDescription>Secure access for LibTrack administrators</CardDescription>
           </div>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email Address</Label>
+              <Label htmlFor="email">Institutional Email</Label>
               <Input
                 id="email"
                 type="email"
@@ -143,24 +155,25 @@ function LoginForm() {
             
             <Button 
               type="submit" 
-              className="w-full h-11 text-lg gap-2 mt-2" 
+              className="w-full h-11 text-lg gap-2 mt-2 bg-accent hover:bg-accent/90" 
               disabled={loading}
             >
               {loading ? (
                 <Loader2 className="h-5 w-5 animate-spin" />
               ) : (
-                <Mail className="h-5 w-5" />
+                <ShieldCheck className="h-5 w-5" />
               )}
-              {loading ? "Authenticating..." : "Sign in"}
+              {loading ? "Verifying..." : "Enter Dashboard"}
             </Button>
           </form>
         </CardContent>
         <CardFooter className="flex flex-col gap-4">
-          {roleHint === 'admin' && (
-            <div className="text-sm text-center">
-              New Admin? <Link href="/admin/register" className="text-primary hover:underline font-bold">Register here</Link>
-            </div>
-          )}
+          <div className="text-sm text-center text-muted-foreground">
+            New Admin? <Link href="/admin/register" className="text-primary hover:underline font-bold">Register here</Link>
+          </div>
+          <Link href="/" className="text-xs text-center text-muted-foreground hover:text-primary underline">
+            Back to Home
+          </Link>
         </CardFooter>
       </Card>
     </div>

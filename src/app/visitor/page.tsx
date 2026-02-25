@@ -12,8 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth, useFirestore, useUser } from '@/firebase';
-import { collection, addDoc, doc, deleteDoc, getDoc } from 'firebase/firestore';
-import { Library, GraduationCap, Clock, CheckCircle2, LogOut, Loader2 } from 'lucide-react';
+import { collection, addDoc, doc, deleteDoc } from 'firebase/firestore';
+import { Library, GraduationCap, CheckCircle2, LogOut, Loader2, User } from 'lucide-react';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { DEPARTMENTS, VISIT_REASONS_LIBRARY, VISIT_REASONS_DEAN } from '@/lib/mock-data';
 
@@ -24,12 +24,13 @@ export default function VisitorPage() {
   const db = useFirestore();
   const { user, isUserLoading } = useUser();
 
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
   const [department, setDepartment] = useState('');
   const [reason, setReason] = useState('');
   const [idNumber, setIdNumber] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [checkedIn, setCheckedIn] = useState(false);
-  const [userData, setUserData] = useState<any>(null);
 
   const logo = PlaceHolderImages.find(img => img.id === 'neu-logo');
 
@@ -38,19 +39,23 @@ export default function VisitorPage() {
       router.push('/');
       return;
     }
-    if (user) {
-      getDoc(doc(db, 'users', user.uid)).then(snap => {
-        if (snap.exists()) setUserData(snap.data());
-      });
-    }
-  }, [user, isUserLoading, router, db]);
+  }, [user, isUserLoading, router]);
 
   const handleCheckIn = async (type: 'Library' | 'Dean') => {
-    if (!department || !reason || (type === 'Dean' && !idNumber)) {
+    if (!fullName || !email || !department || !reason || (type === 'Dean' && !idNumber)) {
       toast({
         variant: "destructive",
         title: "Incomplete Form",
-        description: "Please fill in all required fields.",
+        description: "Please fill in all required fields to proceed.",
+      });
+      return;
+    }
+
+    if (!email.endsWith('@neu.edu.ph')) {
+      toast({
+        variant: "destructive",
+        title: "Invalid Email",
+        description: "Please use your institutional email (@neu.edu.ph).",
       });
       return;
     }
@@ -59,6 +64,8 @@ export default function VisitorPage() {
     try {
       await addDoc(collection(db, 'visits'), {
         userId: user!.uid,
+        visitorName: fullName,
+        visitorEmail: email,
         collegeDepartment: department,
         reason,
         checkInTime: new Date().toISOString(),
@@ -68,14 +75,14 @@ export default function VisitorPage() {
       
       setCheckedIn(true);
       toast({
-        title: type === 'Library' ? "Welcome!" : "Queued",
-        description: "Your visit has been logged successfully.",
+        title: type === 'Library' ? "Check-in Successful!" : "Added to Queue",
+        description: "Thank you for visiting. Your log has been recorded.",
       });
     } catch (err) {
       toast({
         variant: "destructive",
-        title: "Error",
-        description: "Could not log visit. Please try again.",
+        title: "Submission Error",
+        description: "We couldn't log your visit. Please check your connection and try again.",
       });
     } finally {
       setSubmitting(false);
@@ -90,83 +97,148 @@ export default function VisitorPage() {
     router.push('/');
   };
 
-  if (isUserLoading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin" /></div>;
+  if (isUserLoading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin h-8 w-8 text-primary" /></div>;
 
   if (checkedIn) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <Card className="max-w-md w-full text-center p-8 space-y-6">
+        <Card className="max-w-md w-full text-center p-8 space-y-6 animate-in zoom-in-95 duration-300">
           <CheckCircle2 className="h-16 w-16 text-green-600 mx-auto" />
-          <h2 className="text-3xl font-bold font-headline">Visit Logged!</h2>
-          <Button onClick={() => setCheckedIn(false)} className="w-full">Check-in another visit</Button>
-          <Button variant="ghost" onClick={handleLogout} className="w-full">Sign Out</Button>
+          <div className="space-y-2">
+            <h2 className="text-3xl font-bold font-headline text-primary">Check-in Complete!</h2>
+            <p className="text-muted-foreground">Your visit to the {department} has been logged.</p>
+          </div>
+          <div className="pt-4 space-y-3">
+            <Button onClick={() => {
+              setCheckedIn(false);
+              setReason('');
+            }} className="w-full h-12">New Visit Log</Button>
+            <Button variant="ghost" onClick={handleLogout} className="w-full h-12">Finish and Sign Out</Button>
+          </div>
         </Card>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="bg-primary text-primary-foreground p-4 shadow-lg">
+    <div className="min-h-screen bg-background flex flex-col">
+      <header className="bg-primary text-primary-foreground p-4 shadow-lg sticky top-0 z-10">
         <div className="max-w-6xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-3">
-            <div className="bg-white p-0.5 rounded-full overflow-hidden">
+            <div className="bg-white p-0.5 rounded-full overflow-hidden flex items-center justify-center">
               {logo && <Image src={logo.imageUrl} alt="Logo" width={32} height={32} />}
             </div>
-            <h1 className="text-xl font-bold">LibTrack Portal</h1>
+            <h1 className="text-xl font-bold font-headline">LibTrack Visitor Portal</h1>
           </div>
           <Button variant="secondary" size="sm" onClick={handleLogout} className="gap-2">
-            <LogOut className="h-4 w-4" /> Sign Out
+            <LogOut className="h-4 w-4" /> Exit
           </Button>
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto p-4 py-12 space-y-8">
-        <div className="text-center">
-          <h2 className="text-4xl font-bold text-primary mb-2">Check-in</h2>
-          <p className="text-muted-foreground">Welcome, {userData?.fullName || user?.email}</p>
+      <main className="flex-1 max-w-4xl w-full mx-auto p-4 py-8 space-y-8">
+        <div className="text-center space-y-2">
+          <h2 className="text-4xl font-bold text-primary font-headline">Quick Check-in</h2>
+          <p className="text-muted-foreground">Please provide your institutional details to log your visit.</p>
         </div>
 
+        <Card className="border-t-4 border-t-primary shadow-lg">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <User className="h-5 w-5 text-primary" />
+              Visitor Identification
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="fullName">Full Name</Label>
+              <Input 
+                id="fullName" 
+                placeholder="Juan Dela Cruz" 
+                value={fullName} 
+                onChange={e => setFullName(e.target.value)}
+                className="h-11"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="visitorEmail">Institutional Email (@neu.edu.ph)</Label>
+              <Input 
+                id="visitorEmail" 
+                type="email" 
+                placeholder="j.delacruz@neu.edu.ph" 
+                value={email} 
+                onChange={e => setEmail(e.target.value)}
+                className="h-11"
+              />
+            </div>
+          </CardContent>
+        </Card>
+
         <Tabs defaultValue="library" className="w-full">
-          <TabsList className="grid grid-cols-2 h-14 bg-white border mb-8 p-1 rounded-xl">
-            <TabsTrigger value="library" className="text-lg"><Library className="mr-2" /> Library</TabsTrigger>
-            <TabsTrigger value="dean" className="text-lg"><GraduationCap className="mr-2" /> Dean's Office</TabsTrigger>
+          <TabsList className="grid grid-cols-2 h-14 bg-white border mb-8 p-1 rounded-xl shadow-sm">
+            <TabsTrigger value="library" className="text-lg gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              <Library className="h-5 w-5" /> Library
+            </TabsTrigger>
+            <TabsTrigger value="dean" className="text-lg gap-2 data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">
+              <GraduationCap className="h-5 w-5" /> Dean's Office
+            </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="library">
-            <Card className="border-t-4 border-t-primary">
-              <CardHeader><CardTitle>Library Access</CardTitle></CardHeader>
+          <TabsContent value="library" className="animate-in fade-in duration-300">
+            <Card className="border-t-4 border-t-primary shadow-md">
+              <CardHeader>
+                <CardTitle>Library Access Log</CardTitle>
+                <CardDescription>Quick entry for research and study sessions.</CardDescription>
+              </CardHeader>
               <CardContent className="space-y-6">
-                <Select onValueChange={setDepartment} value={department}>
-                  <SelectTrigger className="h-12"><SelectValue placeholder="Select Department" /></SelectTrigger>
-                  <SelectContent>{DEPARTMENTS.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
-                </Select>
-                <Select onValueChange={setReason} value={reason}>
-                  <SelectTrigger className="h-12"><SelectValue placeholder="Select Reason" /></SelectTrigger>
-                  <SelectContent>{VISIT_REASONS_LIBRARY.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
-                </Select>
-                <Button onClick={() => handleCheckIn('Library')} className="w-full h-14 text-xl font-bold" disabled={submitting}>
-                  {submitting ? "Processing..." : "Submit Check-in"}
+                <div className="space-y-2">
+                  <Label>Your College Department</Label>
+                  <Select onValueChange={setDepartment} value={department}>
+                    <SelectTrigger className="h-12"><SelectValue placeholder="Select Department" /></SelectTrigger>
+                    <SelectContent>{DEPARTMENTS.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Primary Reason for Visit</Label>
+                  <Select onValueChange={setReason} value={reason}>
+                    <SelectTrigger className="h-12"><SelectValue placeholder="Select Reason" /></SelectTrigger>
+                    <SelectContent>{VISIT_REASONS_LIBRARY.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <Button onClick={() => handleCheckIn('Library')} className="w-full h-14 text-xl font-bold gap-2" disabled={submitting}>
+                  {submitting ? <Loader2 className="animate-spin" /> : "Submit Check-in"}
                 </Button>
               </CardContent>
             </Card>
           </TabsContent>
 
-          <TabsContent value="dean">
-            <Card className="border-t-4 border-t-accent">
-              <CardHeader><CardTitle>Dean's Office Log</CardTitle></CardHeader>
+          <TabsContent value="dean" className="animate-in fade-in duration-300">
+            <Card className="border-t-4 border-t-accent shadow-md">
+              <CardHeader>
+                <CardTitle>Dean's Office Appointment</CardTitle>
+                <CardDescription>Request a meeting or submit inquiries to the Dean's desk.</CardDescription>
+              </CardHeader>
               <CardContent className="space-y-6">
-                <Input placeholder="Student/Employee ID" value={idNumber} onChange={e => setIdNumber(e.target.value)} className="h-12" />
-                <Select onValueChange={setDepartment} value={department}>
-                  <SelectTrigger className="h-12"><SelectValue placeholder="Select Department" /></SelectTrigger>
-                  <SelectContent>{DEPARTMENTS.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
-                </Select>
-                <Select onValueChange={setReason} value={reason}>
-                  <SelectTrigger className="h-12"><SelectValue placeholder="Select Purpose" /></SelectTrigger>
-                  <SelectContent>{VISIT_REASONS_DEAN.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
-                </Select>
-                <Button onClick={() => handleCheckIn('Dean')} className="w-full h-14 text-xl font-bold bg-accent" disabled={submitting}>
-                  {submitting ? "Processing..." : "Request Appointment"}
+                <div className="space-y-2">
+                  <Label>Student/Employee ID Number</Label>
+                  <Input placeholder="202X-XXXXX" value={idNumber} onChange={e => setIdNumber(e.target.value)} className="h-12 font-mono" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Your College Department</Label>
+                  <Select onValueChange={setDepartment} value={department}>
+                    <SelectTrigger className="h-12"><SelectValue placeholder="Select Department" /></SelectTrigger>
+                    <SelectContent>{DEPARTMENTS.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Purpose of Visit</Label>
+                  <Select onValueChange={setReason} value={reason}>
+                    <SelectTrigger className="h-12"><SelectValue placeholder="Select Purpose" /></SelectTrigger>
+                    <SelectContent>{VISIT_REASONS_DEAN.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <Button onClick={() => handleCheckIn('Dean')} className="w-full h-14 text-xl font-bold bg-accent hover:bg-accent/90 text-accent-foreground gap-2" disabled={submitting}>
+                  {submitting ? <Loader2 className="animate-spin" /> : "Request Appointment"}
                 </Button>
               </CardContent>
             </Card>

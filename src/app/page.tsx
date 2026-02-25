@@ -1,12 +1,26 @@
+
+"use client";
+
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
-import { LogIn, ShieldCheck, GraduationCap } from 'lucide-react';
+import { LogIn, ShieldCheck, GraduationCap, ArrowRight } from 'lucide-react';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
+import { useAuth } from '@/firebase';
+import { initiateAnonymousSignIn } from '@/firebase/non-blocking-login';
 
 export default function Home() {
+  const router = useRouter();
+  const auth = useAuth();
   const logo = PlaceHolderImages.find(img => img.id === 'neu-logo');
+
+  const handleVisitorPortalAccess = () => {
+    // Non-blocking anonymous sign-in for visitors to skip password requirement
+    initiateAnonymousSignIn(auth);
+    router.push('/visitor');
+  };
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
@@ -37,18 +51,16 @@ export default function Home() {
                 <GraduationCap className="text-primary h-6 w-6" />
               </div>
               <CardTitle className="text-2xl font-headline">Visitor Portal</CardTitle>
-              <CardDescription>Check-in for library access or dean's office appointments.</CardDescription>
+              <CardDescription>Instant check-in. No password required.</CardDescription>
             </CardHeader>
             <CardContent>
               <p className="text-muted-foreground">Easy check-in for students and faculty. Track your visits and stay informed about facility availability.</p>
             </CardContent>
             <CardFooter>
-              <Link href="/login?role=visitor" className="w-full">
-                <Button className="w-full text-lg h-12 gap-2">
-                  <LogIn className="h-5 w-5" />
-                  Visitor Login
-                </Button>
-              </Link>
+              <Button onClick={handleVisitorPortalAccess} className="w-full text-lg h-12 gap-2">
+                Go to Portal
+                <ArrowRight className="h-5 w-5" />
+              </Button>
             </CardFooter>
           </Card>
 
@@ -58,7 +70,7 @@ export default function Home() {
                 <ShieldCheck className="text-accent h-6 w-6" />
               </div>
               <CardTitle className="text-2xl font-headline">Admin Control</CardTitle>
-              <CardDescription>Real-time analytics and user management dashboard.</CardDescription>
+              <CardDescription>Secure management dashboard for authorized staff.</CardDescription>
             </CardHeader>
             <CardContent>
               <p className="text-muted-foreground">Access detailed statistics, manage user access, and generate AI-powered reports for institutional planning.</p>
@@ -76,7 +88,7 @@ export default function Home() {
 
         <footer className="text-center text-muted-foreground pt-12">
           <p>© {new Date().getFullYear()} NEU Library Visitor Management System</p>
-          <p className="text-sm">Restricted to institutional email accounts (@neu.edu.ph)</p>
+          <p className="text-sm">Visitor portal requires institutional email (@neu.edu.ph) validation.</p>
         </footer>
       </div>
     </div>

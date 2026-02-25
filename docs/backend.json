@@ -28,7 +28,7 @@
           }
         },
         "blocked": {
-          "type": "boolean",
+          "boolean": "boolean",
           "description": "Indicates if the user is currently blocked from accessing the system. (Default: false)"
         },
         "createdAt": {
@@ -54,7 +54,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Visit",
       "type": "object",
-      "description": "Represents a single visit event by a user to either the library or the Dean's office, capturing relevant details and timestamps.",
+      "description": "Represents a single visit event, capturing visitor identity and purpose.",
       "properties": {
         "id": {
           "type": "string",
@@ -62,7 +62,15 @@
         },
         "userId": {
           "type": "string",
-          "description": "Reference to the UserProfile entity who made this visit. (Relationship: UserProfile 1:N Visit)"
+          "description": "Reference to the Auth UID of the visitor."
+        },
+        "visitorName": {
+          "type": "string",
+          "description": "The full name of the visitor provided at check-in."
+        },
+        "visitorEmail": {
+          "type": "string",
+          "description": "The institutional email of the visitor provided at check-in."
         },
         "checkInTime": {
           "type": "string",
@@ -71,32 +79,31 @@
         },
         "checkOutTime": {
           "type": "string",
-          "description": "Optional timestamp when the visitor checked out or left the premises. More relevant for Dean's office visits but can be used for duration tracking in the library.",
+          "description": "Optional timestamp when the visitor checked out.",
           "format": "date-time"
         },
         "collegeDepartment": {
           "type": "string",
-          "description": "The college department the visitor belongs to. Primarily for library visits and filtering usage statistics."
+          "description": "The college department the visitor belongs to."
         },
         "reason": {
           "type": "string",
-          "description": "The primary reason or purpose for the visit. Can be a free-text entry or selected from predefined options, serving both 'Reason for Visit' (Library) and 'Purpose of Visit' (Dean's Office) requirements."
+          "description": "The primary reason for the visit."
         },
         "studentEmployeeId": {
           "type": "string",
-          "description": "The student or employee ID of the visitor, typically used for Dean's office visits as an additional identifier."
+          "description": "The student or employee ID of the visitor (optional)."
         },
         "status": {
           "type": "string",
-          "description": "The current status of the visit, primarily for Dean's office appointments to track progress. Possible values: 'waiting', 'in-meeting', 'completed'.",
-          "items": {
-            "type": "string"
-          }
+          "description": "Current status of the visit: 'waiting', 'in-meeting', 'completed'."
         }
       },
       "required": [
         "id",
         "userId",
+        "visitorName",
+        "visitorEmail",
         "checkInTime",
         "reason"
       ]
