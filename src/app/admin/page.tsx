@@ -10,7 +10,8 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { store } from '@/lib/store';
+import { useAuth, useFirestore, useUser, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, doc, updateDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
 import { generateSummaryReport } from '@/ai/flows/generate-summary-report';
 import { 
   Users, 
@@ -22,7 +23,8 @@ import {
   FileText,
   TrendingUp,
   LogOut,
-  Sparkles
+  Sparkles,
+  Loader2
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
@@ -30,65 +32,103 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 export default function AdminDashboard() {
   const router = useRouter();
   const { toast } = useToast();
-  const user = store.getCurrentUser();
-  const [visits, setVisits] = useState(store.getVisits());
-  const [users, setUsers] = useState(store.getUsers());
+  const { user, isUserLoading } = useUser();
+  const auth = useAuth();
+  const db = useFirestore();
+
   const [searchTerm, setSearchTerm] = useState('');
   const [generatingReport, setGeneratingReport] = useState(false);
   const [report, setReport] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('stats');
   const logo = PlaceHolderImages.find(img => img.id === 'neu-logo');
 
+  // Real-time Firestore subscriptions
+  const visitsQuery = useMemoFirebase(() => {
+    return query(collection(db, 'visits'), orderBy('checkInTime', 'desc'));
+  }, [db]);
+  const { data: visitsData, isLoading: visitsLoading } = useCollection(visitsQuery);
+
+  const usersQuery = useMemoFirebase(() => {
+    return collection(db, 'users');
+  }, [db]);
+  const { data: usersData, isLoading: usersLoading } = useCollection(usersQuery);
+
   useEffect(() => {
-    if (!user || user.role !== 'Admin') {
-      router.push('/');
+    if (!isUserLoading && !user) {
+      router.push('/login?role=admin');
     }
-  }, [user, router]);
+  }, [user, isUserLoading, router]);
+
+  const visits = visitsData || [];
+  const users = usersData || [];
 
   const stats = {
     total: visits.length,
-    day: visits.filter(v => new Date(v.timestamp).toDateString() === new Date().toDateString()).length,
+    day: visits.filter(v => {
+      const visitDate = v.checkInTime ? new Date(v.checkInTime) : new Date();
+      return visitDate.toDateString() === new Date().toDateString();
+    }).length,
     week: visits.filter(v => {
       const now = new Date();
-      const visitDate = new Date(v.timestamp);
+      const visitDate = v.checkInTime ? new Date(v.checkInTime) : new Date();
       const diff = now.getTime() - visitDate.getTime();
       return diff < 7 * 24 * 60 * 60 * 1000;
     }).length,
     month: visits.filter(v => {
       const now = new Date();
-      const visitDate = new Date(v.timestamp);
+      const visitDate = v.checkInTime ? new Date(v.checkInTime) : new Date();
       return now.getMonth() === visitDate.getMonth() && now.getFullYear() === visitDate.getFullYear();
     }).length,
   };
 
   const filteredUsers = users.filter(u => 
-    u.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    u.email.toLowerCase().includes(searchTerm.toLowerCase())
+    (u.fullName || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
+    (u.email || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleBlockUser = (userId: string) => {
-    store.blockUser(userId);
-    setUsers([...store.getUsers()]);
-    toast({
-      title: "User Management Updated",
-      description: "User status has been successfully toggled.",
-    });
+  const handleBlockUser = async (userId: string, currentBlocked: boolean) => {
+    try {
+      await updateDoc(doc(db, 'users', userId), {
+        blocked: !currentBlocked,
+        updatedAt: new Date().toISOString()
+      });
+      toast({
+        title: "User Management Updated",
+        description: `User has been ${!currentBlocked ? 'blocked' : 'unblocked'}.`,
+      });
+    } catch (err) {
+      toast({
+        variant: "destructive",
+        title: "Action Failed",
+        description: "Permissions restricted. Are you an authorized admin?",
+      });
+    }
   };
 
-  const handleUpdateVisitStatus = (visitId: string, status: any) => {
-    store.updateVisitStatus(visitId, status);
-    setVisits([...store.getVisits()]);
-    toast({
-      title: "Status Updated",
-      description: `Visitor status changed to ${status}`,
-    });
+  const handleUpdateVisitStatus = async (visitId: string, status: string) => {
+    try {
+      await updateDoc(doc(db, 'visits', visitId), {
+        status,
+        checkOutTime: status === 'completed' ? new Date().toISOString() : null
+      });
+      toast({
+        title: "Status Updated",
+        description: `Visitor status changed to ${status}`,
+      });
+    } catch (err) {
+      toast({
+        variant: "destructive",
+        title: "Update Failed",
+        description: "Could not update visit status.",
+      });
+    }
   };
 
   const handleGenerateReport = async () => {
     setGeneratingReport(true);
     try {
       const result = await generateSummaryReport({
-        visitLogs: JSON.stringify(visits)
+        visitLogs: JSON.stringify(visits.slice(0, 50)) // Limit for prompt size
       });
       setReport(result.summaryReport);
       setActiveTab('reports');
@@ -104,9 +144,17 @@ export default function AdminDashboard() {
   };
 
   const handleLogout = () => {
-    store.setCurrentUser(null);
+    auth.signOut();
     router.push('/');
   };
+
+  if (isUserLoading || visitsLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -129,7 +177,7 @@ export default function AdminDashboard() {
           </div>
           <div className="flex items-center gap-4">
             <div className="text-right hidden sm:block">
-              <p className="text-sm font-medium">{user?.name}</p>
+              <p className="text-sm font-medium">{user?.email}</p>
               <p className="text-xs opacity-70">Administrator</p>
             </div>
             <Button variant="secondary" size="sm" onClick={handleLogout} className="gap-2">
@@ -141,7 +189,7 @@ export default function AdminDashboard() {
 
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 py-8 space-y-8">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="bg-white border-l-4 border-l-primary">
+          <Card className="bg-white border-l-4 border-l-primary shadow-sm hover:shadow-md transition-shadow">
             <CardContent className="pt-6">
               <div className="flex justify-between items-center">
                 <div>
@@ -154,7 +202,7 @@ export default function AdminDashboard() {
               </div>
             </CardContent>
           </Card>
-          <Card className="bg-white border-l-4 border-l-accent">
+          <Card className="bg-white border-l-4 border-l-accent shadow-sm hover:shadow-md transition-shadow">
             <CardContent className="pt-6">
               <div className="flex justify-between items-center">
                 <div>
@@ -167,7 +215,7 @@ export default function AdminDashboard() {
               </div>
             </CardContent>
           </Card>
-          <Card className="bg-white border-l-4 border-l-green-500">
+          <Card className="bg-white border-l-4 border-l-green-500 shadow-sm hover:shadow-md transition-shadow">
             <CardContent className="pt-6">
               <div className="flex justify-between items-center">
                 <div>
@@ -180,7 +228,7 @@ export default function AdminDashboard() {
               </div>
             </CardContent>
           </Card>
-          <Card className="bg-white border-l-4 border-l-purple-500">
+          <Card className="bg-white border-l-4 border-l-purple-500 shadow-sm hover:shadow-md transition-shadow">
             <CardContent className="pt-6">
               <div className="flex justify-between items-center">
                 <div>
@@ -208,9 +256,9 @@ export default function AdminDashboard() {
               <Button 
                 onClick={handleGenerateReport} 
                 disabled={generatingReport}
-                className="bg-accent hover:bg-accent/90 text-white gap-2 h-12 px-6"
+                className="bg-accent hover:bg-accent/90 text-white gap-2 h-12 px-6 shadow-sm"
               >
-                <Sparkles className="h-5 w-5" />
+                {generatingReport ? <Loader2 className="h-5 w-5 animate-spin" /> : <Sparkles className="h-5 w-5" />}
                 {generatingReport ? "Generating..." : "AI Summary Report"}
               </Button>
             </div>
@@ -227,9 +275,7 @@ export default function AdminDashboard() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Time</TableHead>
-                      <TableHead>Visitor</TableHead>
                       <TableHead>Department</TableHead>
-                      <TableHead>Facility</TableHead>
                       <TableHead>Reason</TableHead>
                       <TableHead>Status</TableHead>
                     </TableRow>
@@ -238,33 +284,29 @@ export default function AdminDashboard() {
                     {visits.map(visit => (
                       <TableRow key={visit.id}>
                         <TableCell className="font-medium text-xs">
-                          {format(new Date(visit.timestamp), 'MMM d, h:mm a')}
+                          {visit.checkInTime ? format(new Date(visit.checkInTime), 'MMM d, h:mm a') : 'N/A'}
                         </TableCell>
-                        <TableCell>
-                          <div className="font-semibold">{visit.userName}</div>
-                          <div className="text-xs text-muted-foreground">{visit.userEmail}</div>
-                        </TableCell>
-                        <TableCell className="text-xs">{visit.department}</TableCell>
-                        <TableCell>
-                          <Badge variant={visit.type === 'Library' ? 'default' : 'secondary'} className="rounded-md">
-                            {visit.type}
-                          </Badge>
-                        </TableCell>
+                        <TableCell className="text-xs">{visit.collegeDepartment}</TableCell>
                         <TableCell className="text-sm">{visit.reason}</TableCell>
                         <TableCell>
                           <Badge 
                             variant="outline" 
-                            className={`rounded-md ${
-                              visit.status === 'Completed' ? 'bg-green-50 text-green-700 border-green-200' :
-                              visit.status === 'In-Meeting' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                            className={`rounded-md capitalize ${
+                              visit.status === 'completed' ? 'bg-green-50 text-green-700 border-green-200' :
+                              visit.status === 'in-meeting' ? 'bg-blue-50 text-blue-700 border-blue-200' :
                               'bg-orange-50 text-orange-700 border-orange-200'
                             }`}
                           >
-                            {visit.status}
+                            {visit.status || 'waiting'}
                           </Badge>
                         </TableCell>
                       </TableRow>
                     ))}
+                    {visits.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">No visits recorded yet.</TableCell>
+                      </TableRow>
+                    )}
                   </TableBody>
                 </Table>
               </CardContent>
@@ -281,47 +323,45 @@ export default function AdminDashboard() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Visitor</TableHead>
                       <TableHead>ID Number</TableHead>
+                      <TableHead>Department</TableHead>
                       <TableHead>Purpose</TableHead>
-                      <TableHead>Wait Time</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {visits.filter(v => v.type === 'Dean').map(visit => (
+                    {visits.filter(v => v.studentEmployeeId).map(visit => (
                       <TableRow key={visit.id}>
-                        <TableCell>
-                          <div className="font-semibold">{visit.userName}</div>
-                          <div className="text-xs text-muted-foreground">{visit.department}</div>
-                        </TableCell>
-                        <TableCell className="font-mono text-sm">{visit.idNumber || 'N/A'}</TableCell>
+                        <TableCell className="font-mono text-sm">{visit.studentEmployeeId}</TableCell>
+                        <TableCell className="text-sm">{visit.collegeDepartment}</TableCell>
                         <TableCell>{visit.reason}</TableCell>
-                        <TableCell className="text-xs">
-                          {format(new Date(visit.timestamp), 'h:mm a')}
-                        </TableCell>
                         <TableCell>
-                          <Badge className={
-                            visit.status === 'Waiting' ? 'bg-orange-500' : 
-                            visit.status === 'In-Meeting' ? 'bg-blue-500' : 'bg-green-500'
-                          }>
-                            {visit.status}
+                          <Badge className={`capitalize ${
+                            visit.status === 'waiting' ? 'bg-orange-500' : 
+                            visit.status === 'in-meeting' ? 'bg-blue-500' : 'bg-green-500'
+                          }`}>
+                            {visit.status || 'waiting'}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right space-x-2">
-                          {visit.status === 'Waiting' && (
-                            <Button size="sm" onClick={() => handleUpdateVisitStatus(visit.id, 'In-Meeting')}>Start Meeting</Button>
+                          {(visit.status === 'waiting' || !visit.status) && (
+                            <Button size="sm" onClick={() => handleUpdateVisitStatus(visit.id, 'in-meeting')}>Start Meeting</Button>
                           )}
-                          {visit.status === 'In-Meeting' && (
-                            <Button size="sm" variant="outline" onClick={() => handleUpdateVisitStatus(visit.id, 'Completed')}>Complete</Button>
+                          {visit.status === 'in-meeting' && (
+                            <Button size="sm" variant="outline" onClick={() => handleUpdateVisitStatus(visit.id, 'completed')}>Complete</Button>
                           )}
-                          {visit.status === 'Completed' && (
+                          {visit.status === 'completed' && (
                             <CheckCircle2 className="h-5 w-5 text-green-500 inline-block" />
                           )}
                         </TableCell>
                       </TableRow>
                     ))}
+                    {visits.filter(v => v.studentEmployeeId).length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No active appointments.</TableCell>
+                      </TableRow>
+                    )}
                   </TableBody>
                 </Table>
               </CardContent>
@@ -360,20 +400,20 @@ export default function AdminDashboard() {
                       <TableRow key={u.id}>
                         <TableCell>
                           <div className="flex items-center gap-3">
-                            <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-xs font-bold">
-                              {u.name.charAt(0)}
+                            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
+                              {(u.fullName || 'U').charAt(0)}
                             </div>
                             <div>
-                              <div className="font-semibold">{u.name}</div>
+                              <div className="font-semibold">{u.fullName || 'Anonymous'}</div>
                               <div className="text-xs text-muted-foreground">{u.email}</div>
                             </div>
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline">{u.role}</Badge>
+                          <Badge variant="outline">{u.role || 'Visitor'}</Badge>
                         </TableCell>
                         <TableCell>
-                          {u.isBlocked ? (
+                          {u.blocked ? (
                             <Badge variant="destructive">Blocked</Badge>
                           ) : (
                             <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50">Active</Badge>
@@ -381,14 +421,14 @@ export default function AdminDashboard() {
                         </TableCell>
                         <TableCell className="text-right">
                           <Button 
-                            variant={u.isBlocked ? "outline" : "destructive"} 
+                            variant={u.blocked ? "outline" : "destructive"} 
                             size="sm" 
                             className="gap-2"
-                            onClick={() => handleBlockUser(u.id)}
-                            disabled={u.role === 'Admin'}
+                            onClick={() => handleBlockUser(u.id, !!u.blocked)}
+                            disabled={u.role === 'Admin' && u.id === user?.uid}
                           >
                             <UserX className="h-4 w-4" />
-                            {u.isBlocked ? "Unblock" : "Block User"}
+                            {u.blocked ? "Unblock" : "Block User"}
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -412,7 +452,7 @@ export default function AdminDashboard() {
               <CardContent className="pt-6">
                 {report ? (
                   <div className="prose max-w-none prose-blue">
-                    <div className="whitespace-pre-wrap leading-relaxed text-slate-700 font-body p-6 bg-slate-50 rounded-xl border">
+                    <div className="whitespace-pre-wrap leading-relaxed text-slate-700 font-body p-6 bg-slate-50 rounded-xl border shadow-inner">
                       {report}
                     </div>
                   </div>

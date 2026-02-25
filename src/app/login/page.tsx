@@ -1,41 +1,38 @@
 "use client";
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Chrome } from 'lucide-react';
-import { store } from '@/lib/store';
-import { MOCK_USERS } from '@/lib/mock-data';
+import { Chrome, Loader2, Mail } from 'lucide-react';
+import { useAuth, useFirestore } from '@/firebase';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
-  const [email, setEmail] = useState('');
-  const [loading, setLoading] = useState(false);
-  const logo = PlaceHolderImages.find(img => img.id === 'neu-logo');
+  const auth = useAuth();
+  const db = useFirestore();
   
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  
+  const logo = PlaceHolderImages.find(img => img.id === 'neu-logo');
   const roleHint = searchParams.get('role');
 
-  useEffect(() => {
-    if (roleHint === 'admin') {
-      setEmail('admin@neu.edu.ph');
-    } else {
-      setEmail('j.doe@neu.edu.ph');
-    }
-  }, [roleHint]);
-
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    // Institutional email check
     if (!email.endsWith('@neu.edu.ph')) {
       toast({
         variant: "destructive",
@@ -46,51 +43,51 @@ function LoginForm() {
       return;
     }
 
-    // Simulate finding user or creating a new one
-    const user = MOCK_USERS.find(u => u.email === email);
-    
-    if (user && user.isBlocked) {
-      toast({
-        variant: "destructive",
-        title: "Account Blocked",
-        description: "Your account has been restricted by the administrator.",
-      });
-      setLoading(false);
-      return;
-    }
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
 
-    setTimeout(() => {
-      if (user) {
-        store.setCurrentUser(user);
+      // Check user profile in Firestore
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        if (userData.blocked) {
+          toast({
+            variant: "destructive",
+            title: "Account Blocked",
+            description: "Your account has been restricted by the administrator.",
+          });
+          setLoading(false);
+          return;
+        }
+
         toast({
           title: "Welcome Back",
-          description: `Logged in as ${user.name}`,
+          description: `Logged in as ${userData.fullName}`,
         });
-        router.push(user.role === 'Admin' ? '/admin' : '/visitor');
+        
+        router.push(userData.role === 'Admin' ? '/admin' : '/visitor');
       } else {
-        // Create new visitor
-        const newUser = {
-          id: Math.random().toString(36).substr(2, 9),
-          name: email.split('@')[0].split('.').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' '),
-          email,
-          role: 'Visitor' as const,
-          isBlocked: false,
-        };
-        store.setCurrentUser(newUser);
-        toast({
-          title: "Welcome",
-          description: `Successfully signed in as ${newUser.name}`,
-        });
+        // If profile doesn't exist, create it as a visitor by default
         router.push('/visitor');
       }
-    }, 1500);
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Authentication Failed",
+        description: "Invalid credentials or user does not exist.",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-background">
       <Card className="w-full max-w-md animate-in zoom-in-95 duration-300 shadow-2xl">
         <CardHeader className="text-center space-y-4">
-          <div className="mx-auto bg-white border-2 border-primary p-1 rounded-full w-fit overflow-hidden">
+          <div className="mx-auto bg-white border-2 border-primary p-1 rounded-full w-fit overflow-hidden shadow-sm">
             {logo && (
               <Image 
                 src={logo.imageUrl} 
@@ -104,11 +101,11 @@ function LoginForm() {
           </div>
           <div>
             <CardTitle className="text-3xl font-headline font-bold">Institutional Login</CardTitle>
-            <CardDescription>Please sign in with your NEU email account</CardDescription>
+            <CardDescription>Sign in with your NEU institutional account</CardDescription>
           </div>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleLogin} className="space-y-6">
+          <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email Address</Label>
               <Input
@@ -118,24 +115,66 @@ function LoginForm() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="h-12"
+                className="h-11"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="h-11"
               />
             </div>
             
             <Button 
               type="submit" 
-              className="w-full h-12 text-lg gap-2" 
+              className="w-full h-11 text-lg gap-2 mt-2" 
               disabled={loading}
             >
-              <Chrome className="h-5 w-5" />
-              {loading ? "Authenticating..." : "Sign in with Google"}
+              {loading ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <Mail className="h-5 w-5" />
+              )}
+              {loading ? "Authenticating..." : "Sign in"}
             </Button>
             
-            <p className="text-xs text-center text-muted-foreground italic">
-              * This is a simulated Google login restricted to the institutional domain.
-            </p>
+            <div className="relative my-4">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t"></span>
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">Or</span>
+              </div>
+            </div>
+
+            <Button 
+              type="button" 
+              variant="outline"
+              className="w-full h-11 text-lg gap-2" 
+              disabled={loading}
+              onClick={() => toast({ title: "Feature coming soon", description: "Google SSO is being configured." })}
+            >
+              <Chrome className="h-5 w-5" />
+              Sign in with Google
+            </Button>
           </form>
         </CardContent>
+        <CardFooter className="flex flex-col gap-4">
+          <p className="text-xs text-center text-muted-foreground italic">
+            * Authorized access only. Your activity is logged.
+          </p>
+          {roleHint === 'admin' && (
+            <div className="text-sm text-center">
+              New Admin? <Link href="/admin/register" className="text-primary hover:underline font-bold">Register here</Link>
+            </div>
+          )}
+        </CardFooter>
       </Card>
     </div>
   );
