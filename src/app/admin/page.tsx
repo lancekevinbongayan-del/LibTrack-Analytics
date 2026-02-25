@@ -125,7 +125,7 @@ export default function AdminDashboard() {
                 />
               )}
             </div>
-            <h1 className="text-2xl font-bold font-headline">Book Haven Admin</h1>
+            <h1 className="text-2xl font-bold font-headline">LibTrack Admin</h1>
           </div>
           <div className="flex items-center gap-4">
             <div className="text-right hidden sm:block">
