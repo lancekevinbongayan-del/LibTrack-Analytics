@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth, useFirestore, useUser, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, doc, updateDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
+import { collection, doc, updateDoc, deleteDoc, query, orderBy, limit } from 'firebase/firestore';
 import { generateSummaryReport } from '@/ai/flows/generate-summary-report';
 import { 
   Search, 
@@ -43,9 +43,9 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('stats');
   const logo = PlaceHolderImages.find(img => img.id === 'neu-logo');
 
-  // Real-time Firestore subscriptions
+  // Real-time Firestore subscriptions - Added limit(100) to satisfy security rules
   const visitsQuery = useMemoFirebase(() => {
-    return query(collection(db, 'visits'), orderBy('checkInTime', 'desc'));
+    return query(collection(db, 'visits'), orderBy('checkInTime', 'desc'), limit(100));
   }, [db]);
   const { data: visitsData, isLoading: visitsLoading } = useCollection(visitsQuery);
 
