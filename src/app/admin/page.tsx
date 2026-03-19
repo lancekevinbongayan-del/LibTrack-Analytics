@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useMemo } from 'react';
@@ -28,7 +27,8 @@ import {
   Activity,
   User,
   Filter,
-  X
+  X,
+  GraduationCap
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
