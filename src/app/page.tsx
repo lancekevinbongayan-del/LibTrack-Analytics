@@ -59,10 +59,10 @@ export default function Home() {
 
       {/* Main Content */}
       <main className="container mx-auto flex-1 px-4 py-16">
-        <div className="grid gap-12 lg:grid-cols-2">
+        <div className="grid gap-12 lg:grid-cols-2 items-stretch">
           {/* Visitor Side */}
-          <div className="flex flex-col space-y-8">
-            <div className="space-y-4">
+          <div className="flex flex-col h-full">
+            <div className="space-y-4 mb-8 min-h-[140px]">
               <h2 className="text-3xl font-bold font-headline text-primary flex items-center gap-2">
                 <BarChart3 className="h-8 w-8 text-accent" />
                 Intelligent Logistics
@@ -72,7 +72,7 @@ export default function Home() {
               </p>
             </div>
             
-            <Card className="group relative overflow-hidden border-none shadow-xl transition-all hover:shadow-2xl">
+            <Card className="group relative overflow-hidden border-none shadow-xl transition-all hover:shadow-2xl flex flex-col flex-1">
               <div className="absolute top-0 left-0 h-2 w-full bg-accent" />
               <CardHeader className="pt-8">
                 <CardTitle className="text-2xl font-headline flex items-center gap-3">
@@ -83,7 +83,7 @@ export default function Home() {
                   Instant check-in for Library access and Dean's Office appointments.
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-4 flex-1">
                 <ul className="space-y-2 text-sm text-muted-foreground">
                   <li className="flex items-center gap-2">
                     <div className="h-1.5 w-1.5 rounded-full bg-accent" /> No password required for initial check-in
@@ -96,7 +96,7 @@ export default function Home() {
                   </li>
                 </ul>
               </CardContent>
-              <CardFooter>
+              <CardFooter className="pt-4">
                 <Button onClick={handleVisitorPortalAccess} className="w-full h-12 text-lg group-hover:bg-accent transition-colors">
                   Enter Portal <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
@@ -105,8 +105,8 @@ export default function Home() {
           </div>
 
           {/* Admin Side */}
-          <div className="flex flex-col space-y-8">
-             <div className="space-y-4">
+          <div className="flex flex-col h-full">
+             <div className="space-y-4 mb-8 min-h-[140px]">
               <h2 className="text-3xl font-bold font-headline text-primary flex items-center gap-2">
                 <ShieldCheck className="h-8 w-8 text-accent" />
                 Administrative Oversight
@@ -116,7 +116,7 @@ export default function Home() {
               </p>
             </div>
 
-            <Card className="group relative overflow-hidden border-none shadow-xl transition-all hover:shadow-2xl bg-primary text-white">
+            <Card className="group relative overflow-hidden border-none shadow-xl transition-all hover:shadow-2xl bg-primary text-white flex flex-col flex-1">
               <div className="absolute top-0 left-0 h-2 w-full bg-accent" />
               <CardHeader className="pt-8">
                 <CardTitle className="text-2xl font-headline flex items-center gap-3">
@@ -127,19 +127,19 @@ export default function Home() {
                   Secure management dashboard for authorized staff and deans.
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-4 flex-1">
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="p-3 rounded-lg bg-white/10 text-center">
-                    <Clock className="h-5 w-5 mx-auto mb-2 text-accent" />
-                    <span className="text-xs uppercase tracking-wider font-semibold">Live Monitoring</span>
+                  <div className="p-4 rounded-lg bg-white/10 text-center flex flex-col justify-center items-center h-full">
+                    <Clock className="h-6 w-6 mb-2 text-accent" />
+                    <span className="text-[10px] uppercase tracking-wider font-semibold">Live Monitoring</span>
                   </div>
-                  <div className="p-3 rounded-lg bg-white/10 text-center">
-                    <Library className="h-5 w-5 mx-auto mb-2 text-accent" />
-                    <span className="text-xs uppercase tracking-wider font-semibold">Asset Insight</span>
+                  <div className="p-4 rounded-lg bg-white/10 text-center flex flex-col justify-center items-center h-full">
+                    <Library className="h-6 w-6 mb-2 text-accent" />
+                    <span className="text-[10px] uppercase tracking-wider font-semibold">Asset Insight</span>
                   </div>
                 </div>
               </CardContent>
-              <CardFooter>
+              <CardFooter className="pt-4">
                 <Link href="/login?role=admin" className="w-full">
                   <Button variant="secondary" className="w-full h-12 text-lg hover:bg-white transition-colors">
                     Staff Login
