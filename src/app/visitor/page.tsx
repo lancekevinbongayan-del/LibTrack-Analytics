@@ -10,10 +10,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth, useFirestore, useUser } from '@/firebase';
 import { collection, addDoc, doc, deleteDoc } from 'firebase/firestore';
-import { Library, GraduationCap, CheckCircle2, LogOut, Loader2, User } from 'lucide-react';
+import { Library, GraduationCap, CheckCircle2, LogOut, Loader2, User, Briefcase } from 'lucide-react';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { DEPARTMENTS, VISIT_REASONS_LIBRARY, VISIT_REASONS_DEAN } from '@/lib/mock-data';
 
@@ -26,6 +27,7 @@ export default function VisitorPage() {
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
+  const [visitorType, setVisitorType] = useState<'student' | 'employee'>('student');
   const [department, setDepartment] = useState('');
   const [reason, setReason] = useState('');
   const [idNumber, setIdNumber] = useState('');
@@ -66,6 +68,7 @@ export default function VisitorPage() {
         userId: user!.uid,
         visitorName: fullName,
         visitorEmail: email,
+        visitorType,
         collegeDepartment: department,
         reason,
         checkInTime: new Date().toISOString(),
@@ -149,27 +152,52 @@ export default function VisitorPage() {
               Visitor Identification
             </CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="fullName">Full Name</Label>
-              <Input 
-                id="fullName" 
-                placeholder="Juan Dela Cruz" 
-                value={fullName} 
-                onChange={e => setFullName(e.target.value)}
-                className="h-11"
-              />
+          <CardContent className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="fullName">Full Name</Label>
+                <Input 
+                  id="fullName" 
+                  placeholder="Juan Dela Cruz" 
+                  value={fullName} 
+                  onChange={e => setFullName(e.target.value)}
+                  className="h-11"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="visitorEmail">Institutional Email (@neu.edu.ph)</Label>
+                <Input 
+                  id="visitorEmail" 
+                  type="email" 
+                  placeholder="j.delacruz@neu.edu.ph" 
+                  value={email} 
+                  onChange={e => setEmail(e.target.value)}
+                  className="h-11"
+                />
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="visitorEmail">Institutional Email (@neu.edu.ph)</Label>
-              <Input 
-                id="visitorEmail" 
-                type="email" 
-                placeholder="j.delacruz@neu.edu.ph" 
-                value={email} 
-                onChange={e => setEmail(e.target.value)}
-                className="h-11"
-              />
+
+            <div className="space-y-3">
+              <Label>I am a:</Label>
+              <RadioGroup 
+                defaultValue="student" 
+                value={visitorType} 
+                onValueChange={(v) => setVisitorType(v as 'student' | 'employee')}
+                className="flex flex-col sm:flex-row gap-4"
+              >
+                <div className="flex items-center space-x-2 border p-3 rounded-lg flex-1 hover:bg-slate-50 transition-colors cursor-pointer">
+                  <RadioGroupItem value="student" id="student" />
+                  <Label htmlFor="student" className="flex items-center gap-2 cursor-pointer font-medium">
+                    <GraduationCap className="h-4 w-4 text-primary" /> Student
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2 border p-3 rounded-lg flex-1 hover:bg-slate-50 transition-colors cursor-pointer">
+                  <RadioGroupItem value="employee" id="employee" />
+                  <Label htmlFor="employee" className="flex items-center gap-2 cursor-pointer font-medium">
+                    <Briefcase className="h-4 w-4 text-accent" /> Employee (Teacher/Staff)
+                  </Label>
+                </div>
+              </RadioGroup>
             </div>
           </CardContent>
         </Card>
@@ -220,7 +248,7 @@ export default function VisitorPage() {
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-2">
-                  <Label>Student/Employee ID Number</Label>
+                  <Label>{visitorType === 'student' ? 'Student ID Number' : 'Employee ID Number'}</Label>
                   <Input placeholder="202X-XXXXX" value={idNumber} onChange={e => setIdNumber(e.target.value)} className="h-12 font-mono" />
                 </div>
                 <div className="space-y-2">

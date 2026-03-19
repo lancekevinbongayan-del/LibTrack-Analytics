@@ -28,7 +28,7 @@
           }
         },
         "blocked": {
-          "boolean": "boolean",
+          "type": "boolean",
           "description": "Indicates if the user is currently blocked from accessing the system. (Default: false)"
         },
         "createdAt": {
@@ -72,6 +72,11 @@
           "type": "string",
           "description": "The institutional email of the visitor provided at check-in."
         },
+        "visitorType": {
+          "type": "string",
+          "description": "Whether the visitor is a student or an employee.",
+          "enum": ["student", "employee"]
+        },
         "checkInTime": {
           "type": "string",
           "description": "Timestamp when the visitor checked in.",
@@ -104,6 +109,7 @@
         "userId",
         "visitorName",
         "visitorEmail",
+        "visitorType",
         "checkInTime",
         "reason"
       ]

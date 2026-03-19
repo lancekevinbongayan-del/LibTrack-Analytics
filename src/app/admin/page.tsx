@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth, useFirestore, useUser, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, doc, updateDoc, deleteDoc, query, orderBy, limit } from 'firebase/firestore';
@@ -25,10 +26,13 @@ import {
   Smartphone,
   Monitor,
   Activity,
-  User
+  User,
+  Filter,
+  X
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
+import { DEPARTMENTS, VISIT_REASONS_LIBRARY, VISIT_REASONS_DEAN } from '@/lib/mock-data';
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -38,12 +42,16 @@ export default function AdminDashboard() {
   const db = useFirestore();
 
   const [searchTerm, setSearchTerm] = useState('');
+  const [filterReason, setFilterReason] = useState('all');
+  const [filterCollege, setFilterCollege] = useState('all');
+  const [filterVisitorType, setFilterVisitorType] = useState('all');
+  
   const [generatingReport, setGeneratingReport] = useState(false);
   const [report, setReport] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('stats');
   const logo = PlaceHolderImages.find(img => img.id === 'neu-logo');
 
-  // Real-time Firestore subscriptions - Added limit(100) to satisfy security rules
+  // Real-time Firestore subscriptions
   const visitsQuery = useMemoFirebase(() => {
     return query(collection(db, 'visits'), orderBy('checkInTime', 'desc'), limit(100));
   }, [db]);
@@ -65,29 +73,39 @@ export default function AdminDashboard() {
     }
   }, [user, isUserLoading, router]);
 
-  const visits = visitsData || [];
+  const allVisits = visitsData || [];
   const users = usersData || [];
   const sessions = sessionsData || [];
 
-  const stats = {
-    total: visits.length,
-    active: sessions.length,
-    day: visits.filter(v => {
-      const visitDate = v.checkInTime ? new Date(v.checkInTime) : new Date();
-      return visitDate.toDateString() === new Date().toDateString();
-    }).length,
-    week: visits.filter(v => {
-      const now = new Date();
-      const visitDate = v.checkInTime ? new Date(v.checkInTime) : new Date();
-      const diff = now.getTime() - visitDate.getTime();
-      return diff < 7 * 24 * 60 * 60 * 1000;
-    }).length,
-  };
+  const filteredVisits = useMemo(() => {
+    return allVisits.filter(v => {
+      const matchReason = filterReason === 'all' || v.reason === filterReason;
+      const matchCollege = filterCollege === 'all' || v.collegeDepartment === filterCollege;
+      const matchVisitorType = filterVisitorType === 'all' || v.visitorType === filterVisitorType;
+      const matchSearch = (v.visitorName || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
+                         (v.visitorEmail || '').toLowerCase().includes(searchTerm.toLowerCase());
+      return matchReason && matchCollege && matchVisitorType && matchSearch;
+    });
+  }, [allVisits, filterReason, filterCollege, filterVisitorType, searchTerm]);
 
-  const filteredUsers = users.filter(u => 
-    (u.fullName || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
-    (u.email || '').toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const stats = useMemo(() => {
+    return {
+      total: filteredVisits.length,
+      active: sessions.length,
+      day: filteredVisits.filter(v => {
+        const visitDate = v.checkInTime ? new Date(v.checkInTime) : new Date();
+        return visitDate.toDateString() === new Date().toDateString();
+      }).length,
+      week: filteredVisits.filter(v => {
+        const now = new Date();
+        const visitDate = v.checkInTime ? new Date(v.checkInTime) : new Date();
+        const diff = now.getTime() - visitDate.getTime();
+        return diff < 7 * 24 * 60 * 60 * 1000;
+      }).length,
+    };
+  }, [filteredVisits, sessions.length]);
+
+  const allReasons = Array.from(new Set([...VISIT_REASONS_LIBRARY, ...VISIT_REASONS_DEAN]));
 
   const handleBlockUser = async (userId: string, currentBlocked: boolean) => {
     try {
@@ -131,7 +149,7 @@ export default function AdminDashboard() {
     setGeneratingReport(true);
     try {
       const result = await generateSummaryReport({
-        visitLogs: JSON.stringify(visits.slice(0, 50))
+        visitLogs: JSON.stringify(filteredVisits.slice(0, 50))
       });
       setReport(result.summaryReport);
       setActiveTab('reports');
@@ -144,6 +162,13 @@ export default function AdminDashboard() {
     } finally {
       setGeneratingReport(false);
     }
+  };
+
+  const resetFilters = () => {
+    setFilterReason('all');
+    setFilterCollege('all');
+    setFilterVisitorType('all');
+    setSearchTerm('');
   };
 
   const handleLogout = async () => {
@@ -242,49 +267,117 @@ export default function AdminDashboard() {
           </TabsList>
 
           <TabsContent value="stats" className="animate-in fade-in duration-300">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle>Global Visitor Logs</CardTitle>
-                  <CardDescription>Comprehensive record of all library and academic office visits.</CardDescription>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Time</TableHead>
-                      <TableHead>Visitor</TableHead>
-                      <TableHead>Department</TableHead>
-                      <TableHead>Reason</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {visits.map(visit => (
-                      <TableRow key={visit.id}>
-                        <TableCell className="text-xs">
-                          {visit.checkInTime ? format(new Date(visit.checkInTime), 'MMM d, h:mm a') : 'N/A'}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex flex-col">
-                            <span className="font-medium text-sm">{visit.visitorName}</span>
-                            <span className="text-[10px] text-muted-foreground">{visit.visitorEmail}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-xs">{visit.collegeDepartment}</TableCell>
-                        <TableCell className="text-sm">{visit.reason}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="capitalize">
-                            {visit.status || 'waiting'}
-                          </Badge>
-                        </TableCell>
+            <div className="space-y-4">
+              <Card className="bg-slate-50 border-dashed">
+                <CardContent className="pt-6">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
+                        <Filter className="h-3 w-3" /> Reason
+                      </label>
+                      <Select value={filterReason} onValueChange={setFilterReason}>
+                        <SelectTrigger className="bg-white"><SelectValue placeholder="All Reasons" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Reasons</SelectItem>
+                          {allReasons.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
+                        <GraduationCap className="h-3 w-3" /> College
+                      </label>
+                      <Select value={filterCollege} onValueChange={setFilterCollege}>
+                        <SelectTrigger className="bg-white"><SelectValue placeholder="All Colleges" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Colleges</SelectItem>
+                          {DEPARTMENTS.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
+                        <User className="h-3 w-3" /> Visitor Type
+                      </label>
+                      <Select value={filterVisitorType} onValueChange={setFilterVisitorType}>
+                        <SelectTrigger className="bg-white"><SelectValue placeholder="Any Type" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Any Type</SelectItem>
+                          <SelectItem value="student">Student</SelectItem>
+                          <SelectItem value="employee">Employee (Staff/Teacher)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex items-end gap-2">
+                      <div className="relative flex-1">
+                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input 
+                          placeholder="Search name/email..." 
+                          className="pl-8 bg-white" 
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                      </div>
+                      <Button variant="ghost" size="icon" onClick={resetFilters} title="Reset Filters">
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle>Global Visitor Logs</CardTitle>
+                    <CardDescription>
+                      Showing {filteredVisits.length} matching visit records.
+                    </CardDescription>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Time</TableHead>
+                        <TableHead>Visitor</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Department</TableHead>
+                        <TableHead>Reason</TableHead>
+                        <TableHead>Status</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredVisits.map(visit => (
+                        <TableRow key={visit.id}>
+                          <TableCell className="text-xs">
+                            {visit.checkInTime ? format(new Date(visit.checkInTime), 'MMM d, h:mm a') : 'N/A'}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-col">
+                              <span className="font-medium text-sm">{visit.visitorName}</span>
+                              <span className="text-[10px] text-muted-foreground">{visit.visitorEmail}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={visit.visitorType === 'employee' ? 'default' : 'secondary'} className="capitalize text-[10px]">
+                              {visit.visitorType || 'student'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-xs">{visit.collegeDepartment}</TableCell>
+                          <TableCell className="text-sm">{visit.reason}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="capitalize">
+                              {visit.status || 'waiting'}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
           <TabsContent value="active-sessions" className="animate-in fade-in duration-300">
@@ -341,19 +434,25 @@ export default function AdminDashboard() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Visitor</TableHead>
+                      <TableHead>Type</TableHead>
                       <TableHead>Purpose</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {visits.filter(v => v.studentEmployeeId).map(visit => (
+                    {allVisits.filter(v => v.studentEmployeeId).map(visit => (
                       <TableRow key={visit.id}>
                         <TableCell>
                           <div className="flex flex-col">
                             <span className="font-medium">{visit.visitorName}</span>
                             <span className="text-xs text-muted-foreground font-mono">{visit.studentEmployeeId}</span>
                           </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={visit.visitorType === 'employee' ? 'default' : 'secondary'} className="capitalize">
+                            {visit.visitorType || 'student'}
+                          </Badge>
                         </TableCell>
                         <TableCell className="text-sm">{visit.reason}</TableCell>
                         <TableCell><Badge className="capitalize">{visit.status || 'waiting'}</Badge></TableCell>
@@ -397,7 +496,10 @@ export default function AdminDashboard() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredUsers.map(u => (
+                    {users.filter(u => 
+                      (u.fullName || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
+                      (u.email || '').toLowerCase().includes(searchTerm.toLowerCase())
+                    ).map(u => (
                       <TableRow key={u.id}>
                         <TableCell>
                           <div className="flex items-center gap-3">
@@ -435,7 +537,7 @@ export default function AdminDashboard() {
                 </div>
                 <Button onClick={handleGenerateReport} disabled={generatingReport} className="gap-2 bg-primary">
                   {generatingReport ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                  Run Analysis
+                  Analyze Current Filter
                 </Button>
               </CardHeader>
               <CardContent>
@@ -445,7 +547,7 @@ export default function AdminDashboard() {
                   </div>
                 ) : (
                   <div className="text-center py-12 border-2 border-dashed rounded-xl">
-                    <p className="text-muted-foreground">Click the analysis button to process the latest visitor logs.</p>
+                    <p className="text-muted-foreground">Click the analysis button to process the filtered visitor logs.</p>
                   </div>
                 )}
               </CardContent>
