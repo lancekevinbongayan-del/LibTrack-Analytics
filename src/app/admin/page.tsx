@@ -33,11 +33,13 @@ import {
   Users,
   Settings,
   BrainCircuit,
-  CalendarCheck
+  CalendarCheck,
+  BarChart3
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { DEPARTMENTS, VISIT_REASONS_LIBRARY, VISIT_REASONS_DEAN } from '@/lib/mock-data';
+import { cn } from '@/lib/utils';
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -409,7 +411,6 @@ export default function AdminDashboard() {
             </div>
           </TabsContent>
 
-          {/* Sessions, Queue, Users, and Reports content - all modernized similarly */}
           <TabsContent value="active-sessions">
              <Card className="shadow-sm border-none">
               <CardHeader className="bg-slate-50/50">
