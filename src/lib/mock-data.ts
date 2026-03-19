@@ -27,12 +27,23 @@ export interface VisitLog {
 }
 
 export const DEPARTMENTS = [
+  'College of Agriculture',
+  'College of Arts and Sciences',
+  'College of Business Administration',
+  'College of Communication',
+  'College of Computer Studies',
+  'College of Criminology',
+  'College of Education',
   'College of Engineering',
   'College of Architecture',
-  'College of Business',
-  'College of Arts and Sciences',
-  'College of Information Technology',
+  'College of Music',
+  'College of Nursing',
+  'College of Physical Education',
+  'College of Law',
+  'College of Medicine',
   'Graduate School',
+  'Integrated School (Elementary/High School)',
+  'School of Management',
 ];
 
 export const VISIT_REASONS_LIBRARY = [
@@ -42,13 +53,16 @@ export const VISIT_REASONS_LIBRARY = [
   'Quiet Area Access',
   'Computer Lab Usage',
   'Group Meeting',
+  'Thesis Consultation',
 ];
 
 export const VISIT_REASONS_DEAN = [
-  'Inquiry',
-  'Signature',
-  'Meeting',
-  'Scholarship',
+  'General Inquiry',
+  'Document Signature',
+  'Scheduled Meeting',
+  'Scholarship Application',
+  'Grade Consultation',
+  'Enrollment Assistance',
   'Others',
 ];
 
@@ -67,7 +81,7 @@ export const MOCK_USERS: User[] = [
     email: 'j.doe@neu.edu.ph',
     role: 'Visitor',
     isBlocked: false,
-    department: 'College of Information Technology',
+    department: 'College of Computer Studies',
     avatarUrl: 'https://picsum.photos/seed/johndoe/100/100',
   },
   {
@@ -96,7 +110,7 @@ export const MOCK_VISITS: VisitLog[] = [
     userId: '2',
     userName: 'John Doe',
     userEmail: 'j.doe@neu.edu.ph',
-    department: 'College of Information Technology',
+    department: 'College of Computer Studies',
     reason: 'Study',
     timestamp: new Date(Date.now() - 3600000).toISOString(),
     status: 'Completed',
@@ -108,7 +122,7 @@ export const MOCK_VISITS: VisitLog[] = [
     userName: 'Jane Smith',
     userEmail: 'j.smith@neu.edu.ph',
     department: 'College of Engineering',
-    reason: 'Signature',
+    reason: 'Document Signature',
     timestamp: new Date().toISOString(),
     status: 'Waiting',
     type: 'Dean',
@@ -119,8 +133,8 @@ export const MOCK_VISITS: VisitLog[] = [
     userId: '2',
     userName: 'John Doe',
     userEmail: 'j.doe@neu.edu.ph',
-    department: 'College of Information Technology',
-    reason: 'Meeting',
+    department: 'College of Computer Studies',
+    reason: 'Scheduled Meeting',
     timestamp: new Date(Date.now() - 86400000).toISOString(),
     status: 'Completed',
     type: 'Dean',
