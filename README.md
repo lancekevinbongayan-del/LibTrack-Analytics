@@ -8,12 +8,12 @@ The application is hosted at: **[https://studio-8706353121-4d298.web.app](https:
 
 ## 🚀 Deployment Guide
 
-This project is optimized for dynamic deployment. Follow the steps below to see your app live.
+This project is optimized for dynamic deployment using Firebase.
 
-### Path A: Firebase CLI Deployment (Recommended for Dev)
-If you are deploying from your terminal, you **must** use the webframeworks integration:
+### Deployment via Firebase CLI
+To deploy the application and ensure the dynamic Next.js backend is active:
 
-1. **Enable the Experiment:**
+1. **Enable the Web Frameworks Experiment:**
    ```bash
    firebase experiments:enable webframeworks
    ```
@@ -22,16 +22,16 @@ If you are deploying from your terminal, you **must** use the webframeworks inte
    ```bash
    firebase deploy
    ```
-   *Note: This command will now automatically detect Next.js, build the project, and deploy the dynamic functions and hosting assets.*
+   *Note: This command detects the Next.js project in the current directory, builds it, and deploys it to Firebase Hosting and Cloud Functions automatically.*
 
-### Path B: Firebase App Hosting (Automated)
+### Deployment via Firebase App Hosting (Recommended)
 1. Push your code to a GitHub repository.
-2. Connect your repo in the [Firebase Console](https://console.firebase.google.com/) under **App Hosting**.
-3. Firebase will handle every build and deployment automatically on every push.
+2. Connect your repository in the [Firebase Console](https://console.firebase.google.com/) under **App Hosting**.
+3. Firebase will handle every build and deployment automatically on every push to your main branch.
 
 ## 🛠️ Tech Stack
 - **Framework:** Next.js 15 (App Router)
-- **AI:** Genkit (Google Gemini 1.5 Flash)
+- **AI:** Genkit (Google Gemini 2.5 Flash)
 - **Database/Auth:** Firebase Firestore & Firebase Auth
 - **UI:** Tailwind CSS & ShadCN Components
 
