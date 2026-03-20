@@ -26,6 +26,7 @@ export default function VisitorPage() {
   const db = useFirestore();
   const { user, isUserLoading } = useUser();
 
+  const [mounted, setMounted] = useState(false);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [visitorType, setVisitorType] = useState<'student' | 'employee'>('student');
@@ -38,6 +39,7 @@ export default function VisitorPage() {
   const logo = PlaceHolderImages.find(img => img.id === 'neu-logo');
 
   useEffect(() => {
+    setMounted(true);
     if (!isUserLoading && !user) {
       router.push('/');
     }
@@ -59,7 +61,7 @@ export default function VisitorPage() {
       await addDoc(collection(db, 'visits'), {
         userId: user!.uid,
         visitorName: fullName,
-        visitorEmail: email,
+        visitorEmail: email.toLowerCase(),
         visitorType,
         collegeDepartment: department,
         reason,
@@ -77,7 +79,14 @@ export default function VisitorPage() {
     }
   };
 
-  if (isUserLoading) return <div className="min-h-screen flex flex-col items-center justify-center gap-6"><Loader2 className="animate-spin h-12 w-12 text-primary" /><p className="text-sm font-black tracking-widest uppercase">Validating Identity...</p></div>;
+  if (!mounted || isUserLoading) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-6">
+        <Loader2 className="animate-spin h-12 w-12 text-primary" />
+        <p className="text-sm font-black tracking-widest uppercase">Validating Identity...</p>
+      </div>
+    );
+  }
 
   if (checkedIn) {
     return (

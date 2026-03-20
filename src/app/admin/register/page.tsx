@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from 'react';
@@ -51,23 +52,20 @@ export default function AdminRegistration() {
 
     setLoading(true);
     try {
-      // 1. Create Auth User
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // 2. Create User Profile
       const userProfileRef = doc(db, 'users', user.uid);
       await setDoc(userProfileRef, {
         id: user.uid,
         email,
         fullName,
-        role: 'Admin',
+        role: 'admin', // Standardized to lowercase
         blocked: false,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
 
-      // 3. Create Admin Role Marker
       try {
         const adminRoleRef = doc(db, 'roles_admin', user.uid);
         await setDoc(adminRoleRef, {
@@ -75,12 +73,12 @@ export default function AdminRegistration() {
           createdAt: serverTimestamp(),
         });
       } catch (err) {
-        console.warn("Could not automatically create admin marker. Manual authorization may be required.", err);
+        console.warn("Admin marker creation warning.", err);
       }
 
       toast({
         title: "Registration Successful",
-        description: "Admin account created. Redirecting to dashboard...",
+        description: "Admin account created. Redirecting...",
       });
       
       router.push('/admin');
@@ -88,7 +86,7 @@ export default function AdminRegistration() {
       toast({
         variant: "destructive",
         title: "Registration Failed",
-        description: error.message || "An error occurred during registration.",
+        description: error.message || "An error occurred.",
       });
     } finally {
       setLoading(false);
@@ -110,7 +108,6 @@ export default function AdminRegistration() {
                 alt={logo.description} 
                 width={48} 
                 height={48} 
-                data-ai-hint={logo.imageHint}
                 className="object-contain"
               />
             )}
@@ -124,7 +121,7 @@ export default function AdminRegistration() {
               <Label htmlFor="fullName">Full Name</Label>
               <Input
                 id="fullName"
-                placeholder="John Doe"
+                placeholder="Juan Dela Cruz"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 required

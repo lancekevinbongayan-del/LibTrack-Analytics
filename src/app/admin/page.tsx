@@ -27,14 +27,13 @@ import {
   X,
   GraduationCap,
   LayoutDashboard,
-  Users,
   BrainCircuit,
   CalendarCheck,
   BarChart3,
   Building2,
   ChevronRight
 } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, isValid } from 'date-fns';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { DEPARTMENTS, VISIT_REASONS_LIBRARY, VISIT_REASONS_DEAN } from '@/lib/mock-data';
 import { cn } from '@/lib/utils';
@@ -46,6 +45,7 @@ export default function AdminDashboard() {
   const auth = useAuth();
   const db = useFirestore();
 
+  const [mounted, setMounted] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterReason, setFilterReason] = useState('all');
   const [filterCollege, setFilterCollege] = useState('all');
@@ -54,6 +54,7 @@ export default function AdminDashboard() {
   const [generatingReport, setGeneratingReport] = useState(false);
   const [report, setReport] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('stats');
+
   const logo = PlaceHolderImages.find(img => img.id === 'neu-logo');
 
   const visitsQuery = useMemoFirebase(() => {
@@ -67,6 +68,7 @@ export default function AdminDashboard() {
   const { data: sessionsData } = useCollection(sessionsQuery);
 
   useEffect(() => {
+    setMounted(true);
     if (!isUserLoading && !user) {
       router.push('/login');
     }
@@ -87,15 +89,17 @@ export default function AdminDashboard() {
   }, [allVisits, filterReason, filterCollege, filterVisitorType, searchTerm]);
 
   const stats = useMemo(() => {
+    if (!mounted) return { total: 0, active: 0, day: 0 };
     return {
       total: filteredVisits.length,
       active: sessions.length,
       day: filteredVisits.filter(v => {
-        const visitDate = v.checkInTime ? new Date(v.checkInTime) : new Date();
-        return visitDate.toDateString() === new Date().toDateString();
+        if (!v.checkInTime) return false;
+        const visitDate = new Date(v.checkInTime);
+        return isValid(visitDate) && visitDate.toDateString() === new Date().toDateString();
       }).length,
     };
-  }, [filteredVisits, sessions.length]);
+  }, [filteredVisits, sessions.length, mounted]);
 
   const allReasons = Array.from(new Set([...VISIT_REASONS_LIBRARY, ...VISIT_REASONS_DEAN]));
 
@@ -107,7 +111,13 @@ export default function AdminDashboard() {
     router.push('/');
   };
 
-  if (isUserLoading || visitsLoading) {
+  const safeFormatDate = (dateStr: string | undefined) => {
+    if (!dateStr) return '—';
+    const d = new Date(dateStr);
+    return isValid(d) ? format(d, 'MMM d, HH:mm') : '—';
+  };
+
+  if (!mounted || isUserLoading || visitsLoading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center space-y-6">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -125,7 +135,7 @@ export default function AdminDashboard() {
               {logo && <Image src={logo.imageUrl} alt="Logo" width={32} height={32} className="invert brightness-0" />}
             </div>
             <div>
-              <h1 className="text-2xl font-black font-headline text-primary tracking-tight">OpenShelf <span className="text-accent">Admin</span></h1>
+              <h1 className="text-2xl font-black font-headline text-primary tracking-tight">OpenShelf <span className="text-accent">Analytics</span></h1>
               <p className="text-[10px] uppercase tracking-widest font-black text-slate-400">Institutional Governance Console</p>
             </div>
           </div>
@@ -221,9 +231,6 @@ export default function AdminDashboard() {
               <TabsTrigger value="stats" className="rounded-xl px-6 py-3 font-bold data-[state=active]:bg-primary data-[state=active]:text-white transition-all">
                 <LayoutDashboard className="h-4 w-4 mr-2" /> Live Monitor
               </TabsTrigger>
-              <TabsTrigger value="dean-view" className="rounded-xl px-6 py-3 font-bold data-[state=active]:bg-primary data-[state=active]:text-white transition-all">
-                <GraduationCap className="h-4 w-4 mr-2" /> Dean's Queue
-              </TabsTrigger>
               <TabsTrigger value="reports" className="rounded-xl px-6 py-3 font-bold data-[state=active]:bg-primary data-[state=active]:text-white transition-all">
                 <BrainCircuit className="h-4 w-4 mr-2" /> AI Synthesis
               </TabsTrigger>
@@ -291,12 +298,12 @@ export default function AdminDashboard() {
                     {filteredVisits.map(visit => (
                       <TableRow key={visit.id} className="hover:bg-slate-50/50 transition-colors border-slate-100">
                         <TableCell className="text-xs font-bold text-slate-400 px-8">
-                          {visit.checkInTime ? format(new Date(visit.checkInTime), 'MMM d, HH:mm') : '—'}
+                          {safeFormatDate(visit.checkInTime)}
                         </TableCell>
                         <TableCell className="px-8">
                           <div className="flex items-center gap-4">
                             <div className="h-10 w-10 rounded-2xl bg-primary/5 flex items-center justify-center text-primary font-black text-xs shadow-sm">
-                              {visit.visitorName?.charAt(0)}
+                              {visit.visitorName?.charAt(0) || '?'}
                             </div>
                             <div className="flex flex-col">
                               <span className="font-black text-primary text-sm tracking-tight">{visit.visitorName}</span>

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, Suspense } from 'react';
@@ -59,7 +60,8 @@ function LoginForm() {
           return;
         }
 
-        if (userData.role !== 'Admin') {
+        // Standardize role check to lowercase
+        if (userData.role?.toLowerCase() !== 'admin') {
           toast({
             variant: "destructive",
             title: "Permission Denied",
@@ -69,8 +71,7 @@ function LoginForm() {
           return;
         }
 
-        // Create a real-time session record
-        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
         setDoc(doc(db, 'user_sessions', user.uid), {
           userId: user.uid,
           email: user.email,
@@ -115,7 +116,6 @@ function LoginForm() {
                 alt={logo.description} 
                 width={60} 
                 height={60} 
-                data-ai-hint={logo.imageHint}
                 className="object-contain"
               />
             )}
